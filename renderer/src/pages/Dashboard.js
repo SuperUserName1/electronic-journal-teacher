@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { PlusIcon, DownloadIcon, CalendarIcon, DocumentTextIcon } from '@heroicons/react/outline';
@@ -20,13 +20,9 @@ const Dashboard = ({ course, group }) => {
     weight: 1.0
   });
 
-  useEffect(() => {
-    if (course && group) {
-      loadData();
-    }
-  }, [course, group]);
+  const loadData = useCallback(async () => {
+    if (!course || !group) return;
 
-  const loadData = async () => {
     setLoading(true);
     
     try {
@@ -51,7 +47,11 @@ const Dashboard = ({ course, group }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [course, group]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleAddLesson = async () => {
     if (!validateNewLesson()) return;
@@ -236,7 +236,7 @@ const Dashboard = ({ course, group }) => {
       });
       
       if (result) {
-        alert('Данные успешно экспортированы!');
+        alert(`Данные успешно экспортированы!: ${result.fileName}`);
       }
     } catch (error) {
       console.error('Ошибка при экспорте данных:', error);
@@ -245,8 +245,9 @@ const Dashboard = ({ course, group }) => {
   };
 
   // Сортировка студентов по алфавиту
-  const sortedStudents = [...students].sort((a, b) => 
-    a.full_name.localeCompare(b.full_name)
+  const sortedStudents = useMemo(
+    () => [...students].sort((a, b) => a.full_name.localeCompare(b.full_name)),
+    [students]
   );
 
   return (

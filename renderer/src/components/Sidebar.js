@@ -53,6 +53,22 @@ const Sidebar = ({ courses, groups, activeCourse, activeGroup, onCourseChange, o
         
         <div className="sidebar-group mt-4">УПРАВЛЕНИЕ</div>
         
+        <Link 
+          to="/students" 
+          className={`sidebar-item ${isActive('/students') ? 'active' : ''}`}
+        >
+          <UserGroupIcon className="sidebar-icon" />
+          Студенты
+        </Link>
+        
+        <Link 
+          to="/groups" 
+          className={`sidebar-item ${isActive('/groups') ? 'active' : ''}`}
+        >
+          <UserGroupIcon className="sidebar-icon" />
+          Управление группами
+        </Link>
+        
         <div className="px-3 py-1">
           <button 
             onClick={() => setIsCoursesOpen(!isCoursesOpen)}
@@ -106,18 +122,28 @@ const Sidebar = ({ courses, groups, activeCourse, activeGroup, onCourseChange, o
             
             {isGroupsOpen && (
               <div className="pl-4 mb-4">
-                {groups.map((group) => (
-                  <div 
-                    key={group} 
-                    className={`sidebar-item cursor-pointer ${
-                      activeGroup === group ? 'active bg-blue-50' : ''
-                    }`}
-                    onClick={() => onGroupChange(group)}
-                  >
-                    <UserGroupIcon className="sidebar-icon text-gray-500" />
-                    <span className="truncate">{group}</span>
+                {groups.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-gray-500 italic">
+                    Нет групп для выбранного курса
                   </div>
-                ))}
+                ) : (
+                  groups.map((group) => (
+                    <div 
+                      key={group.id} 
+                      className={`sidebar-item cursor-pointer ${
+                        activeGroup && activeGroup.id === group.id ? 'active bg-blue-50' : ''
+                      }`}
+                      onClick={() => onGroupChange(group)}
+                    >
+                      <UserGroupIcon className="sidebar-icon text-gray-500" />
+                      <span className="truncate">{group.name}</span>
+                    </div>
+                  ))
+                )}
+                <Link to="/groups" className="sidebar-item text-blue-600 hover:bg-blue-50">
+                  <PlusIcon className="sidebar-icon text-blue-500" />
+                  Настроить группы
+                </Link>
               </div>
             )}
           </>

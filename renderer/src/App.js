@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -6,6 +6,7 @@ import Students from './pages/Students';
 import Courses from './pages/Courses';
 import Analytics from './pages/Analytics';
 import Reports from './pages/Reports';
+import Groups from './pages/Groups';
 import { ArrowLeftIcon } from '@heroicons/react/outline';
 
 function App() {
@@ -16,38 +17,111 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  useEffect(() => {
-    loadData();
-  }, []);
-  
-  const loadData = async () => {
+  const loadCourses = useCallback(async (preferredCourseId = null) => {
     try {
       const coursesData = await window.api.getCourses();
       setCourses(coursesData);
       
-      if (coursesData.length > 0) {
-        setActiveCourse(coursesData[0]);
-        
-        // Получаем уникальные группы из курса
-        const courseGroups = await window.api.getStudentsByGroup(coursesData[0].group_name || 'Группа-101');
-        const uniqueGroups = [...new Set(courseGroups.map(s => s.group_name))];
-        setGroups(uniqueGroups);
-        
-        if (uniqueGroups.length > 0) {
-          setActiveGroup(uniqueGroups[0]);
-        }
+      if (coursesData.length === 0) {
+        setActiveCourse(null);
+        setGroups([]);
+        setActiveGroup(null);
+        return;
       }
+
+      const candidateIds = [
+        preferredCourseId,
+        activeCourse?.id
+      ].filter(Boolean);
+
+      let nextCourse = null;
+      for (const courseId of candidateIds) {
+        nextCourse = coursesData.find(course => course.id === courseId);
+        if (nextCourse) break;
+      }
+
+      if (!nextCourse) {
+        nextCourse = coursesData[0];
+      }
+
+      setActiveCourse(nextCourse);
     } catch (error) {
       console.error('Ошибка при загрузке данных:', error);
     }
-  };
+  }, [activeCourse]);
+
+  const loadGroups = useCallback(async (courseId, preferredGroupId = null) => {
+    if (!courseId) {
+      setGroups([]);
+      setActiveGroup(null);
+      return;
+    }
+
+    try {
+      const groupsData = await window.api.getGroups(courseId);
+      setGroups(groupsData);
+
+      if (groupsData.length === 0) {
+        setActiveGroup(null);
+        return;
+      }
+
+      const candidateIds = [
+        preferredGroupId,
+        activeGroup?.id
+      ].filter(Boolean);
+
+      let nextGroup = null;
+      for (const groupId of candidateIds) {
+        nextGroup = groupsData.find(group => group.id === groupId);
+        if (nextGroup) break;
+      }
+
+      if (!nextGroup) {
+        nextGroup = groupsData[0];
+      }
+
+      setActiveGroup(nextGroup);
+    } catch (error) {
+      console.error('Ошибка при загрузке групп:', error);
+    }
+  }, [activeGroup]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
+
+  useEffect(() => {
+    if (activeCourse) {
+      loadGroups(activeCourse.id);
+    }
+  }, [activeCourse, loadGroups]);
+
+  useEffect(() => {
+    const handleCoursesUpdated = (event) => {
+      const preferredId = event.detail?.courseId || activeCourse?.id || null;
+      loadCourses(preferredId);
+    };
+
+    const handleGroupsUpdated = (event) => {
+      if (activeCourse) {
+        const preferredGroupId = event.detail?.groupId || activeGroup?.id || null;
+        loadGroups(activeCourse.id, preferredGroupId);
+      }
+    };
+
+    window.addEventListener('courses-updated', handleCoursesUpdated);
+    window.addEventListener('groups-updated', handleGroupsUpdated);
+
+    return () => {
+      window.removeEventListener('courses-updated', handleCoursesUpdated);
+      window.removeEventListener('groups-updated', handleGroupsUpdated);
+    };
+  }, [activeCourse, activeGroup, loadCourses, loadGroups]);
   
   const handleCourseChange = (course) => {
     setActiveCourse(course);
-    // Здесь должна быть логика загрузки групп для выбранного курса
-    // Для упрощения берем тестовые данные
-    setGroups(['Группа-101', 'Группа-102']);
-    setActiveGroup('Группа-101');
+    loadGroups(course?.id);
   };
   
   const handleGroupChange = (group) => {
@@ -87,6 +161,7 @@ function App() {
               {location.pathname === '/' && activeCourse ? activeCourse.name : ''}
               {location.pathname === '/students' && 'Управление студентами'}
               {location.pathname === '/courses' && 'Управление курсами'}
+              {location.pathname === '/groups' && 'Управление группами'}
               {location.pathname === '/analytics' && 'Аналитика успеваемости'}
               {location.pathname === '/reports' && 'Отчеты'}
             </h1>
@@ -94,7 +169,7 @@ function App() {
               {activeCourse && activeGroup && (
                 <div className="text-sm text-gray-600">
                   <div>{activeCourse.name}</div>
-                  <div className="font-medium">{activeGroup}</div>
+                  <div className="font-medium">{activeGroup.name}</div>
                 </div>
               )}
             </div>
@@ -109,7 +184,7 @@ function App() {
                 activeCourse && activeGroup ? (
                   <Dashboard 
                     course={activeCourse} 
-                    group={activeGroup} 
+                    group={activeGroup.name} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">
@@ -125,7 +200,7 @@ function App() {
                 activeCourse ? (
                   <Students 
                     course={activeCourse} 
-                    group={activeGroup} 
+                    group={activeGroup?.name} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">
@@ -136,13 +211,14 @@ function App() {
               } 
             />
             <Route path="/courses" element={<Courses />} />
+            <Route path="/groups" element={<Groups />} />
             <Route 
               path="/analytics" 
               element={
                 activeCourse && activeGroup ? (
                   <Analytics 
                     course={activeCourse} 
-                    group={activeGroup} 
+                    group={activeGroup.name} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">
@@ -158,7 +234,7 @@ function App() {
                 activeCourse && activeGroup ? (
                   <Reports 
                     course={activeCourse} 
-                    group={activeGroup} 
+                    group={activeGroup.name} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">

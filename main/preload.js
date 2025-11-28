@@ -18,11 +18,23 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
 contextBridge.exposeInMainWorld('api', {
   // Студенты
   getStudentsByGroup: (groupName) => ipcRenderer.invoke('get-students-by-group', groupName),
+  createStudent: (studentData) => ipcRenderer.invoke('create-student', studentData),
+  updateStudent: (studentId, studentData) => ipcRenderer.invoke('update-student', studentId, studentData),
+  deleteStudent: (studentId) => ipcRenderer.invoke('delete-student', studentId),
+  exportStudentsExcel: (groupName) => ipcRenderer.invoke('export-students-excel', groupName),
   importStudents: (filePath) => ipcRenderer.invoke('import-students', filePath),
+  
+  // Группы
+  getGroups: (courseId) => ipcRenderer.invoke('get-groups', courseId),
+  createGroup: (groupData) => ipcRenderer.invoke('create-group', groupData),
+  updateGroup: (groupId, groupData) => ipcRenderer.invoke('update-group', groupId, groupData),
+  deleteGroup: (groupId) => ipcRenderer.invoke('delete-group', groupId),
   
   // Курсы
   getCourses: () => ipcRenderer.invoke('get-courses'),
   createCourse: (courseData) => ipcRenderer.invoke('create-course', courseData),
+  updateCourse: (courseId, courseData) => ipcRenderer.invoke('update-course', courseId, courseData),
+  deleteCourse: (courseId) => ipcRenderer.invoke('delete-course', courseId),
   
   // Занятия
   getLessons: (courseId) => ipcRenderer.invoke('get-lessons', courseId),
@@ -41,6 +53,8 @@ contextBridge.exposeInMainWorld('api', {
   
   // Экспорт
   exportData: (options) => ipcRenderer.invoke('export-data', options),
+  generateGradeReport: (courseId, groupName) => ipcRenderer.invoke('generate-grade-report', courseId, groupName),
+  generateAttendanceReport: (courseId, groupName, format) => ipcRenderer.invoke('generate-attendance-report', courseId, groupName, format),
   
   // Резервное копирование
   createBackup: () => ipcRenderer.invoke('create-backup'),

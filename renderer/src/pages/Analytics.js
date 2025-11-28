@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
   PieChart, Pie, Cell, 
@@ -12,13 +12,9 @@ const Analytics = ({ course, group }) => {
   const [riskSummary, setRiskSummary] = useState({ low: 0, medium: 0, high: 0 });
   const [averageGrades, setAverageGrades] = useState([]);
   
-  useEffect(() => {
-    if (course && group) {
-      loadData();
-    }
-  }, [course, group]);
+  const loadData = useCallback(async () => {
+    if (!course || !group) return;
 
-  const loadData = async () => {
     setLoading(true);
     
     try {
@@ -57,27 +53,28 @@ const Analytics = ({ course, group }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [course, group]);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Подготовка данных для круговой диаграммы
-  const pieData = [
+  const pieData = useMemo(() => ([
     { name: 'Низкий риск', value: riskSummary.low },
     { name: 'Средний риск', value: riskSummary.medium },
     { name: 'Высокий риск', value: riskSummary.high }
-  ];
+  ]), [riskSummary.low, riskSummary.medium, riskSummary.high]);
 
   const COLORS = ['#10B981', '#F59E0B', '#EF4444'];
 
   return (
     <div className="space-y-6">
+      {loading && (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      )}
       <div>
         <h2 className="text-lg font-medium text-gray-900">Аналитика успеваемости</h2>
         <p className="mt-1 text-sm text-gray-500">

@@ -242,6 +242,109 @@ async function getStudentsByGroup(groupName) {
     .orderBy('full_name', 'asc');
 }
 
+async function createStudent(studentData) {
+  const payload = {
+    full_name: studentData.full_name.trim(),
+    group_name: studentData.group_name.trim(),
+    record_book_number: studentData.record_book_number.trim(),
+    created_at: new Date(),
+    updated_at: new Date()
+  };
+
+  const [newRecord] = await db('students').insert(payload).returning('id');
+  const id = typeof newRecord === 'object' ? newRecord.id : newRecord;
+
+  return await db('students').where('id', id).first();
+}
+
+async function updateStudent(studentId, studentData) {
+  await db('students')
+    .where('id', studentId)
+    .update({
+      full_name: studentData.full_name.trim(),
+      group_name: studentData.group_name.trim(),
+      record_book_number: studentData.record_book_number.trim(),
+      updated_at: new Date()
+    });
+
+  return await db('students').where('id', studentId).first();
+}
+
+async function deleteStudent(studentId) {
+  // Удаляем связанные записи вручную, чтобы избежать зависания данных
+  await db('attendance').where('student_id', studentId).del();
+  await db('grades').where('student_id', studentId).del();
+  return await db('students').where('id', studentId).del();
+}
+
+async function getGroupReportData(courseId, groupName) {
+  const course = await db('courses').where('id', courseId).first();
+  const lessons = await db('lessons')
+    .where('course_id', courseId)
+    .orderBy('date', 'asc');
+  const students = await db('students')
+    .where('group_name', groupName)
+    .orderBy('full_name', 'asc');
+
+  const lessonIds = lessons.map(lesson => lesson.id);
+  const studentIds = students.map(student => student.id);
+
+  let attendanceMap = new Map();
+  let gradesMap = new Map();
+
+  if (lessonIds.length && studentIds.length) {
+    const attendanceRecords = await db('attendance')
+      .whereIn('lesson_id', lessonIds)
+      .whereIn('student_id', studentIds);
+    attendanceMap = new Map(
+      attendanceRecords.map(record => [`${record.student_id}-${record.lesson_id}`, record.status])
+    );
+
+    const gradeRecords = await db('grades')
+      .whereIn('lesson_id', lessonIds)
+      .whereIn('student_id', studentIds);
+    gradesMap = new Map(
+      gradeRecords.map(record => [`${record.student_id}-${record.lesson_id}`, record.value])
+    );
+  }
+
+  const studentsDetailed = [];
+  for (const student of students) {
+    const grades = {};
+    const attendance = {};
+
+    lessonIds.forEach(lessonId => {
+      const grade = gradesMap.get(`${student.id}-${lessonId}`);
+      const status = attendanceMap.get(`${student.id}-${lessonId}`);
+      if (grade) grades[lessonId] = grade;
+      if (status) attendance[lessonId] = status;
+    });
+
+    const average = courseId ? await calculateStudentAverage(student.id, courseId) : null;
+
+    studentsDetailed.push({
+      id: student.id,
+      name: student.full_name,
+      record_book_number: student.record_book_number,
+      grades,
+      attendance,
+      average
+    });
+  }
+
+  return {
+    course: course ? course.name : 'Без названия',
+    semester: course ? course.semester : '',
+    group: groupName,
+    lessons: lessons.map(lesson => ({
+      id: lesson.id,
+      date: lesson.date,
+      topic: lesson.topic
+    })),
+    students: studentsDetailed
+  };
+}
+
 async function getCourses() {
   return await db('courses').orderBy('name', 'asc');
 }
@@ -463,6 +566,10 @@ module.exports = {
   initialize,
   importStudents,
   getStudentsByGroup,
+  createStudent,
+  updateStudent,
+  deleteStudent,
+  getGroupReportData,
   getCourses,
   createCourse,
   getLessons,

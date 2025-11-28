@@ -47,8 +47,70 @@ function setupIPCListeners() {
     return await db.getStudentsByGroup(groupName);
   });
 
+  ipcMain.handle('create-student', async (event, studentData) => {
+    return await db.createStudent(studentData);
+  });
+
+  ipcMain.handle('update-student', async (event, studentId, studentData) => {
+    return await db.updateStudent(studentId, studentData);
+  });
+
+  ipcMain.handle('delete-student', async (event, studentId) => {
+    await db.deleteStudent(studentId);
+    return true;
+  });
+
+  ipcMain.handle('export-students-excel', async (event, groupName) => {
+    if (!groupName) {
+      throw new Error('Группа не выбрана');
+    }
+    const students = await db.getStudentsByGroup(groupName);
+    return await backup.exportStudentsList(students, groupName);
+  });
+
   ipcMain.handle('import-students', async (event, filePath) => {
     return await db.importStudents(filePath);
+  });
+
+  // Группы
+  ipcMain.handle('get-groups', async (event, courseId) => {
+    return await db.getGroups(courseId);
+  });
+
+  ipcMain.handle('create-group', async (event, groupData) => {
+    return await db.createGroup(groupData);
+  });
+
+  ipcMain.handle('update-group', async (event, groupId, groupData) => {
+    return await db.updateGroup(groupId, groupData);
+  });
+
+  ipcMain.handle('delete-group', async (event, groupId) => {
+    return await db.deleteGroup(groupId);
+  });
+
+  ipcMain.handle('generate-grade-report', async (event, courseId, groupName) => {
+    if (!courseId || !groupName) {
+      throw new Error('Не выбраны курс или группа');
+    }
+    const data = await db.getGroupReportData(courseId, groupName);
+    return await backup.exportData({
+      format: 'xlsx',
+      data,
+      fileName: `vedomost-${groupName}`
+    });
+  });
+
+  ipcMain.handle('generate-attendance-report', async (event, courseId, groupName, format = 'pdf') => {
+    if (!courseId || !groupName) {
+      throw new Error('Не выбраны курс или группа');
+    }
+    const data = await db.getGroupReportData(courseId, groupName);
+    return await backup.exportData({
+      format,
+      data,
+      fileName: `report-${groupName}`
+    });
   });
 
   // Курсы
@@ -58,6 +120,14 @@ function setupIPCListeners() {
 
   ipcMain.handle('create-course', async (event, courseData) => {
     return await db.createCourse(courseData);
+  });
+
+  ipcMain.handle('update-course', async (event, courseId, courseData) => {
+    return await db.updateCourse(courseId, courseData);
+  });
+
+  ipcMain.handle('delete-course', async (event, courseId) => {
+    return await db.deleteCourse(courseId);
   });
 
   // Занятия
