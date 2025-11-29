@@ -55,8 +55,6 @@ contextBridge.exposeInMainWorld('api', {
   // Экспорт
   exportData: (options) => ipcRenderer.invoke('export-data', options),
   generateGradeReport: (courseId, groupName) => ipcRenderer.invoke('generate-grade-report', courseId, groupName),
-  generateAttendanceReport: (courseId, groupName, format) => ipcRenderer.invoke('generate-attendance-report', courseId, groupName, format),
-  
   // Резервное копирование
   createBackup: () => ipcRenderer.invoke('create-backup'),
   restoreBackup: (path) => ipcRenderer.invoke('restore-backup', path)

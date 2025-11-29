@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 
 const Reports = ({ course, group }) => {
   const [registerLoading, setRegisterLoading] = useState(false);
-  const [reportLoading, setReportLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -25,24 +24,6 @@ const Reports = ({ course, group }) => {
     }
   };
 
-  const handleGenerateReport = async () => {
-    if (!course || !group) {
-      setError('Выберите курс и группу');
-      return;
-    }
-    setReportLoading(true);
-    setError('');
-    try {
-      const filePath = await window.api.generateAttendanceReport(course.id, group, 'pdf');
-      setMessage(`Отчет по посещаемости сохранен: ${filePath}`);
-    } catch (err) {
-      console.error('Ошибка при формировании отчета:', err);
-      setError('Не удалось сформировать отчет. Проверьте консоль для подробностей.');
-    } finally {
-      setReportLoading(false);
-      setTimeout(() => setMessage(''), 5000);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -63,7 +44,7 @@ const Reports = ({ course, group }) => {
         </div>
       )}
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <div className="card">
           <div className="card-header">
             <h3 className="text-lg font-medium text-gray-900">Ведомость успеваемости</h3>
@@ -78,38 +59,6 @@ const Reports = ({ course, group }) => {
               disabled={registerLoading}
             >
               {registerLoading ? 'Формируем...' : 'Сформировать ведомость'}
-            </button>
-          </div>
-        </div>
-        
-        <div className="card">
-          <div className="card-header">
-            <h3 className="text-lg font-medium text-gray-900">Отчет по посещаемости</h3>
-          </div>
-          <div className="card-body">
-            <p className="text-sm text-gray-500 mb-4">
-              Анализ посещаемости студентов за выбранную дисциплину (PDF).
-            </p>
-            <button 
-              className="btn btn-primary w-full"
-              onClick={handleGenerateReport}
-              disabled={reportLoading}
-            >
-              {reportLoading ? 'Формируем...' : 'Сформировать отчет'}
-            </button>
-          </div>
-        </div>
-        
-        <div className="card md:col-span-2">
-          <div className="card-header">
-            <h3 className="text-lg font-medium text-gray-900">История изменений</h3>
-          </div>
-          <div className="card-body">
-            <p className="text-sm text-gray-500 mb-4">
-              Просмотр истории внесенных изменений в журнал успеваемости.
-            </p>
-            <button className="btn btn-secondary w-full">
-              Просмотреть историю
             </button>
           </div>
         </div>

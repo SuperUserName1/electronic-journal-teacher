@@ -19,10 +19,8 @@
         "directories": {
             "output": "dist"
         },
-        "files": [
-            "main/**/*",
-            "renderer/**/*",
-            "assets/icons/*"
+        "asarUnpack": [
+            "node_modules/sqlite3/**/*"
         ],
         "icon": "assets/icons/icon",
         "artifactName": "${productName}-${version}.${ext}",

@@ -1,12 +1,14 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 module.exports = {
   entry: './renderer/src/index.js',
   output: {
     path: path.join(__dirname, 'renderer/dist'),
     filename: 'bundle.js',
-    publicPath: '/',
+    publicPath: isProduction ? './' : '/',
   },
   devServer: {
     port: 3000,
@@ -40,6 +42,23 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './renderer/public/index.html',
+      filename: 'index.html',
+      inject: true,
+      scriptLoading: 'defer',
+      ...(isProduction && {
+        minify: {
+          removeComments: true,
+          collapseWhitespace: true,
+          removeRedundantAttributes: true,
+          useShortDoctype: true,
+          removeEmptyAttributes: true,
+          removeStyleLinkTypeAttributes: true,
+          keepClosingSlash: true,
+          minifyJS: true,
+          minifyCSS: true,
+          minifyURLs: true,
+        }
+      }),
     }),
   ],
 };

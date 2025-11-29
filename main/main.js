@@ -23,7 +23,9 @@ async function createWindow() {
     await mainWindow.loadURL(devServerURL);
     mainWindow.webContents.openDevTools();
   } else {
-    await mainWindow.loadFile(path.join(__dirname, '../renderer/dist/index.html'));
+    const indexPath = path.join(__dirname, '../renderer/dist/index.html');
+    console.log('Loading index.html from:', indexPath);
+    await mainWindow.loadFile(indexPath);
   }
 
   // Отключаем стандартное контекстное меню для основного окна
@@ -106,17 +108,6 @@ function setupIPCListeners() {
     });
   });
 
-  ipcMain.handle('generate-attendance-report', async (event, courseId, groupName, format = 'pdf') => {
-    if (!courseId || !groupName) {
-      throw new Error('Не выбраны курс или группа');
-    }
-    const data = await db.getGroupReportData(courseId, groupName);
-    return await backup.exportData({
-      format,
-      data,
-      fileName: `report-${groupName}`
-    });
-  });
 
   // Курсы
   ipcMain.handle('get-courses', async () => {
@@ -181,6 +172,7 @@ function setupIPCListeners() {
     await backup.restoreBackup(backupPath);
     return true;
   });
+
 }
 
 function setupAppMenu() {

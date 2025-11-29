@@ -229,14 +229,14 @@ const Dashboard = ({ course, group }) => {
       };
       
       // Экспорт в XLSX
-      const result = await window.api.exportData({
+      const filePath = await window.api.exportData({
         format: 'xlsx',
         data: exportData,
-        fileName: `Ведомость_${course.name.replace(/\s+/g, '_')}_${group.replace(/\s+/g, '_')}.xlsx`
+        fileName: `Ведомость_${course.name.replace(/\s+/g, '_')}_${group.replace(/\s+/g, '_')}`
       });
       
-      if (result) {
-        alert(`Данные успешно экспортированы!: ${result.fileName}`);
+      if (filePath) {
+        alert(`Данные успешно экспортированы!\nПуть: ${filePath}`);
       }
     } catch (error) {
       console.error('Ошибка при экспорте данных:', error);
