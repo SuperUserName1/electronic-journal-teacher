@@ -4,30 +4,28 @@ const fs = require('fs');
 const XLSX = require('xlsx');
 const PdfPrinter = require('pdfmake');
 
-let pdfmakeFontsPath = null;
-try {
-  const pdfmakePackageDir = path.dirname(require.resolve('pdfmake/package.json'));
-  const possiblePaths = [
-    path.join(pdfmakePackageDir, 'fonts'),
-    path.join(pdfmakePackageDir, 'examples', 'fonts')
-  ];
-
-  for (const candidate of possiblePaths) {
-    if (
-      fs.existsSync(path.join(candidate, 'Roboto-Regular.ttf')) &&
-      fs.existsSync(path.join(candidate, 'Roboto-Medium.ttf'))
-    ) {
-      pdfmakeFontsPath = candidate;
-      break;
-    }
+// Используем стандартные шрифты PDF, которые не требуют внешних файлов
+// Эти шрифты встроены в PDF и работают везде
+const fonts = {
+  Times: {
+    normal: 'Times-Roman',
+    bold: 'Times-Bold',
+    italics: 'Times-Italic',
+    bolditalics: 'Times-BoldItalic'
+  },
+  Helvetica: {
+    normal: 'Helvetica',
+    bold: 'Helvetica-Bold',
+    italics: 'Helvetica-Oblique',
+    bolditalics: 'Helvetica-BoldOblique'
+  },
+  Courier: {
+    normal: 'Courier',
+    bold: 'Courier-Bold',
+    italics: 'Courier-Oblique',
+    bolditalics: 'Courier-BoldOblique'
   }
-
-  if (!pdfmakeFontsPath) {
-    console.warn('Шрифты pdfmake не найдены, PDF-экспорт может быть недоступен');
-  }
-} catch (error) {
-  console.error('Не удалось определить путь к шрифтам pdfmake:', error);
-}
+};
 
 const PAGE_WIDTH_A4 = 842; // points
 
@@ -170,20 +168,7 @@ async function exportToXLSX(data, filePath) {
 }
 
 async function exportToPDF(data, filePath) {
-  if (!pdfmakeFontsPath) {
-    throw new Error('Не найден пакет pdfmake для генерации PDF');
-  }
-
-  const fontsDir = pdfmakeFontsPath;
-  const fonts = {
-    Roboto: {
-      normal: path.join(fontsDir, 'Roboto-Regular.ttf'),
-      bold: path.join(fontsDir, 'Roboto-Medium.ttf'),
-      italics: path.join(fontsDir, 'Roboto-Italic.ttf'),
-      bolditalics: path.join(fontsDir, 'Roboto-MediumItalic.ttf')
-    }
-  };
-
+  // Используем стандартные шрифты PDF без внешних файлов
   const printer = new PdfPrinter(fonts);
 
   const lessonHeaders = data.lessons.map(lesson => lesson.date);
@@ -259,7 +244,7 @@ async function exportToPDF(data, filePath) {
       }
     },
     defaultStyle: {
-      font: 'Roboto',
+      font: 'Helvetica',
       fontSize: 9
     }
   };

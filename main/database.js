@@ -239,6 +239,7 @@ async function importStudents(filePath) {
 async function getStudentsByGroup(groupName) {
   return await db('students')
     .where('group_name', groupName)
+    .whereNot('full_name', '__GROUP_PLACEHOLDER__')
     .orderBy('full_name', 'asc');
 }
 
@@ -250,6 +251,12 @@ async function createStudent(studentData) {
     created_at: new Date(),
     updated_at: new Date()
   };
+
+  // Удаляем заглушку группы, если она существует, при добавлении первого реального студента
+  await db('students')
+    .where('group_name', payload.group_name)
+    .where('full_name', '__GROUP_PLACEHOLDER__')
+    .del();
 
   const [newRecord] = await db('students').insert(payload).returning('id');
   const id = typeof newRecord === 'object' ? newRecord.id : newRecord;
@@ -284,6 +291,7 @@ async function getGroupReportData(courseId, groupName) {
     .orderBy('date', 'asc');
   const students = await db('students')
     .where('group_name', groupName)
+    .whereNot('full_name', '__GROUP_PLACEHOLDER__')
     .orderBy('full_name', 'asc');
 
   const lessonIds = lessons.map(lesson => lesson.id);
@@ -376,7 +384,9 @@ async function createLesson(lessonData) {
 }
 
 async function getAttendance(lessonId, groupName) {
-  const students = await db('students').where('group_name', groupName);
+  const students = await db('students')
+    .where('group_name', groupName)
+    .whereNot('full_name', '__GROUP_PLACEHOLDER__');
   const attendanceRecords = await db('attendance')
     .where('lesson_id', lessonId)
     .whereIn('student_id', students.map(s => s.id));
@@ -415,7 +425,9 @@ async function updateAttendance(studentId, lessonId, status) {
 }
 
 async function getGrades(lessonId, groupName) {
-  const students = await db('students').where('group_name', groupName);
+  const students = await db('students')
+    .where('group_name', groupName)
+    .whereNot('full_name', '__GROUP_PLACEHOLDER__');
   const gradeRecords = await db('grades')
     .where('lesson_id', lessonId)
     .whereIn('student_id', students.map(s => s.id));
@@ -562,6 +574,167 @@ async function forecastStudentPerformance(studentId, courseId) {
   };
 }
 
+// Получение уникальных групп из таблицы студентов
+async function getGroups(courseId) {
+  // Получаем уникальные имена групп
+  const groups = await db('students')
+    .distinct('group_name')
+    .orderBy('group_name', 'asc');
+  
+  return groups.map(g => g.group_name);
+}
+
+// Получение всех групп с информацией о количестве студентов
+async function getAllGroups() {
+  // Получаем все уникальные группы
+  const allGroups = await db('students')
+    .distinct('group_name')
+    .pluck('group_name');
+  
+  const result = [];
+  
+  for (const groupName of allGroups) {
+    // Подсчитываем реальных студентов (без заглушек)
+    const count = await db('students')
+      .where('group_name', groupName)
+      .whereNot('full_name', '__GROUP_PLACEHOLDER__')
+      .count('id as count')
+      .first();
+    
+    result.push({
+      name: groupName,
+      student_count: parseInt(count.count) || 0
+    });
+  }
+  
+  return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Создание новой группы (создает пустую группу, можно добавить студентов позже)
+async function createGroup(groupName) {
+  if (!groupName || !groupName.trim()) {
+    throw new Error('Название группы обязательно');
+  }
+  
+  const trimmedName = groupName.trim();
+  
+  // Проверяем, существует ли уже группа с таким именем
+  const existing = await db('students')
+    .where('group_name', trimmedName)
+    .first();
+  
+  if (existing) {
+    throw new Error('Группа с таким названием уже существует');
+  }
+  
+  // Создаем запись-заглушку для группы, чтобы группа появилась в списке
+  // Эта запись будет автоматически удалена при добавлении первого реального студента
+  // или может быть удалена вручную, если группа не нужна
+  const placeholderRecordBook = `__GROUP_PLACEHOLDER__${Date.now()}__`;
+  
+  await db('students').insert({
+    full_name: '__GROUP_PLACEHOLDER__',
+    group_name: trimmedName,
+    record_book_number: placeholderRecordBook,
+    created_at: new Date(),
+    updated_at: new Date()
+  });
+  
+  return { name: trimmedName, student_count: 0 };
+}
+
+// Обновление названия группы (переименование всех студентов группы)
+async function updateGroup(oldGroupName, newGroupName) {
+  if (!oldGroupName || !newGroupName || !newGroupName.trim()) {
+    throw new Error('Названия групп обязательны');
+  }
+  
+  const trimmedNewName = newGroupName.trim();
+  
+  if (oldGroupName === trimmedNewName) {
+    return { name: trimmedNewName };
+  }
+  
+  // Проверяем, существует ли уже группа с новым именем
+  const existing = await db('students')
+    .where('group_name', trimmedNewName)
+    .first();
+  
+  if (existing) {
+    throw new Error('Группа с таким названием уже существует');
+  }
+  
+  // Обновляем всех студентов с старым именем группы
+  const updated = await db('students')
+    .where('group_name', oldGroupName)
+    .update({
+      group_name: trimmedNewName,
+      updated_at: new Date()
+    });
+  
+  if (updated === 0) {
+    throw new Error('Группа не найдена');
+  }
+  
+  return { name: trimmedNewName };
+}
+
+// Удаление группы (удаляет всех студентов группы, включая заглушки)
+async function deleteGroup(groupName) {
+  if (!groupName) {
+    throw new Error('Название группы обязательно');
+  }
+  
+  // Получаем всех студентов группы (включая заглушки)
+  const students = await db('students')
+    .where('group_name', groupName)
+    .select('id');
+  
+  const studentIds = students.map(s => s.id);
+  
+  if (studentIds.length === 0) {
+    // Группа пустая, просто возвращаем успех
+    return true;
+  }
+  
+  // Удаляем связанные данные
+  await db('attendance').whereIn('student_id', studentIds).del();
+  await db('grades').whereIn('student_id', studentIds).del();
+  
+  // Удаляем студентов (включая заглушки)
+  await db('students').whereIn('id', studentIds).del();
+  
+  return true;
+}
+
+// Обновление курса
+async function updateCourse(courseId, courseData) {
+  await db('courses')
+    .where('id', courseId)
+    .update({
+      name: courseData.name,
+      semester: courseData.semester,
+      updated_at: new Date()
+    });
+  
+  return await db('courses').where('id', courseId).first();
+}
+
+// Удаление курса
+async function deleteCourse(courseId) {
+  // Сначала удаляем занятия и связанные данные
+  const lessons = await db('lessons').where('course_id', courseId).select('id');
+  const lessonIds = lessons.map(l => l.id);
+  
+  if (lessonIds.length > 0) {
+    await db('attendance').whereIn('lesson_id', lessonIds).del();
+    await db('grades').whereIn('lesson_id', lessonIds).del();
+  }
+  
+  await db('lessons').where('course_id', courseId).del();
+  return await db('courses').where('id', courseId).del();
+}
+
 module.exports = {
   initialize,
   importStudents,
@@ -570,8 +743,15 @@ module.exports = {
   updateStudent,
   deleteStudent,
   getGroupReportData,
+  getGroups,
+  getAllGroups,
+  createGroup,
+  updateGroup,
+  deleteGroup,
   getCourses,
   createCourse,
+  updateCourse,
+  deleteCourse,
   getLessons,
   createLesson,
   getAttendance,

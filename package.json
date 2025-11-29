@@ -1,61 +1,61 @@
 {
     "name": "electronic-journal-teacher",
     "version": "1.0.0",
-"description": "Электронный журнал преподавателя для высших учебных заведений",
-"author": {
-    "name": "Nikita",
-    "email": "support@ejournal.local"
-},
-"main": "main/main.js",
+    "description": "Электронный журнал преподавателя для высших учебных заведений",
+    "author": {
+        "name": "Nikita",
+        "email": "support@ejournal.local"
+    },
+    "main": "main/main.js",
     "scripts": {
         "start": "concurrently -r \"cross-env NODE_ENV=development node scripts/start-electron.js\" \"npm run dev\"",
         "dev": "webpack serve --mode development --config webpack.config.js --port 3000 --host 0.0.0.0",
         "build": "webpack --mode production --config webpack.config.js",
         "package": "electron-builder"
     },
-"build": {
-    "appId": "com.electronicjournal.teacher",
-    "productName": "ЭЖП: Электронный Журнал Преподавателя",
-    "directories": {
-        "output": "dist"
-    },
-    "files": [
-        "main/**/*",
-        "renderer/**/*",
-        "assets/icons/*"
-    ],
-    "icon": "assets/icons/icon",
-    "artifactName": "${productName}-${version}.${ext}",
-    "win": {
-        "icon": "assets/icons/icon.ico",
-        "target": [
-            {
-                "target": "nsis",
-                "arch": [
-                    "x64"
-                ]
-            }
+    "build": {
+        "appId": "com.electronicjournal.teacher",
+        "productName": "ЭЖП: Электронный Журнал Преподавателя",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main/**/*",
+            "renderer/**/*",
+            "assets/icons/*"
         ],
-        "publisherName": "Nikita"
+        "icon": "assets/icons/icon",
+        "artifactName": "${productName}-${version}.${ext}",
+        "win": {
+            "icon": "assets/icons/icon.ico",
+            "target": [
+                {
+                    "target": "nsis",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ],
+            "publisherName": "Nikita"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": true,
+            "artifactName": "${productName}-Setup-${version}.${ext}"
+        },
+        "linux": {
+            "target": [
+                "AppImage"
+            ],
+            "category": "Education",
+            "icon": "assets/icons/icon.png",
+            "artifactName": "${productName}-${version}.${ext}"
+        },
+        "mac": {
+            "target": "dmg"
+        }
     },
-    "nsis": {
-        "oneClick": false,
-        "perMachine": false,
-        "allowToChangeInstallationDirectory": true,
-        "artifactName": "${productName}-Setup-${version}.${ext}"
-    },
-    "linux": {
-        "target": [
-            "AppImage"
-        ],
-        "category": "Education",
-        "icon": "assets/icons/icon.png",
-        "artifactName": "${productName}-${version}.${ext}"
-    },
-    "mac": {
-        "target": "dmg"
-    }
-},
     "dependencies": {
         "chart.js": "^4.4.0",
         "date-fns": "^3.3.1",
@@ -65,6 +65,7 @@
         "node-fetch": "^3.3.2",
         "pdfkit": "^0.17.2",
         "pdfmake": "^0.2.7",
+        "pdfmake-fonts": "^0.0.1",
         "react": "^18.2.0",
         "react-chartjs-2": "^5.2.0",
         "react-dom": "^18.2.0",

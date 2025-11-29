@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 
 const initialFormState = {
-  name: '',
-  course_id: ''
+  name: ''
 };
 
 const Groups = () => {
   const [groups, setGroups] = useState([]);
-  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
@@ -21,12 +19,8 @@ const Groups = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [groupsData, coursesData] = await Promise.all([
-        window.api.getGroups(),
-        window.api.getCourses()
-      ]);
+      const groupsData = await window.api.getAllGroups();
       setGroups(groupsData);
-      setCourses(coursesData);
     } catch (err) {
       console.error('Ошибка при загрузке групп:', err);
       setError('Не удалось загрузить список групп. Попробуйте обновить страницу.');
@@ -39,8 +33,7 @@ const Groups = () => {
     if (group) {
       setEditingGroup(group);
       setFormData({
-        name: group.name,
-        course_id: group.course_id || ''
+        name: group.name
       });
     } else {
       setEditingGroup(null);
@@ -72,15 +65,10 @@ const Groups = () => {
     }
 
     try {
-      const payload = {
-        name: formData.name.trim(),
-        course_id: formData.course_id ? Number(formData.course_id) : null
-      };
-
       if (editingGroup) {
-        await window.api.updateGroup(editingGroup.id, payload);
+        await window.api.updateGroup(editingGroup.name, formData.name.trim());
       } else {
-        await window.api.createGroup(payload);
+        await window.api.createGroup(formData.name.trim());
       }
 
       window.dispatchEvent(new CustomEvent('groups-updated'));
@@ -93,12 +81,12 @@ const Groups = () => {
   };
 
   const handleDelete = async (group) => {
-    if (!window.confirm(`Удалить группу «${group.name}» и всех её студентов?`)) {
+    if (!window.confirm(`Удалить группу «${group.name}» и всех её студентов (${group.student_count || 0} чел.)?`)) {
       return;
     }
 
     try {
-      await window.api.deleteGroup(group.id);
+      await window.api.deleteGroup(group.name);
       window.dispatchEvent(new CustomEvent('groups-updated'));
       await loadData();
     } catch (err) {
@@ -143,13 +131,11 @@ const Groups = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groups.map(group => (
-            <div key={group.id} className="card">
+            <div key={group.name} className="card">
               <div className="card-header flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900">{group.name}</h3>
                 <span className="text-xs font-semibold uppercase text-gray-500">
-                  {group.course_id
-                    ? courses.find(course => course.id === group.course_id)?.name || 'Курс не найден'
-                    : 'Без курса'}
+                  {group.student_count || 0} {group.student_count === 1 ? 'студент' : group.student_count < 5 ? 'студента' : 'студентов'}
                 </span>
               </div>
               <div className="card-body flex justify-end gap-3">
@@ -194,22 +180,11 @@ const Groups = () => {
                   placeholder="Например, Группа-201"
                   required
                 />
-              </div>
-              <div>
-                <label className="form-label">Курс</label>
-                <select
-                  name="course_id"
-                  value={formData.course_id}
-                  onChange={handleInputChange}
-                  className="form-select"
-                >
-                  <option value="">Не привязывать</option>
-                  {courses.map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.name} ({course.semester})
-                    </option>
-                  ))}
-                </select>
+                {editingGroup && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    При изменении названия группы будут обновлены все студенты этой группы.
+                  </p>
+                )}
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button

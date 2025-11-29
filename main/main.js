@@ -77,16 +77,21 @@ function setupIPCListeners() {
     return await db.getGroups(courseId);
   });
 
-  ipcMain.handle('create-group', async (event, groupData) => {
-    return await db.createGroup(groupData);
+  ipcMain.handle('get-all-groups', async () => {
+    return await db.getAllGroups();
   });
 
-  ipcMain.handle('update-group', async (event, groupId, groupData) => {
-    return await db.updateGroup(groupId, groupData);
+  ipcMain.handle('create-group', async (event, groupName) => {
+    return await db.createGroup(groupName);
   });
 
-  ipcMain.handle('delete-group', async (event, groupId) => {
-    return await db.deleteGroup(groupId);
+  ipcMain.handle('update-group', async (event, oldGroupName, newGroupName) => {
+    return await db.updateGroup(oldGroupName, newGroupName);
+  });
+
+  ipcMain.handle('delete-group', async (event, groupName) => {
+    await db.deleteGroup(groupName);
+    return true;
   });
 
   ipcMain.handle('generate-grade-report', async (event, courseId, groupName) => {

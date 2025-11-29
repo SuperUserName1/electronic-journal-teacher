@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Courses from './pages/Courses';
+import Groups from './pages/Groups';
 import Analytics from './pages/Analytics';
 import Reports from './pages/Reports';
-import Groups from './pages/Groups';
 import { ArrowLeftIcon } from '@heroicons/react/outline';
 
 function App() {
@@ -17,7 +17,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const loadCourses = useCallback(async (preferredCourseId = null) => {
+  const loadCourses = async (preferredCourseId = null) => {
     try {
       const coursesData = await window.api.getCourses();
       setCourses(coursesData);
@@ -48,9 +48,9 @@ function App() {
     } catch (error) {
       console.error('Ошибка при загрузке данных:', error);
     }
-  }, [activeCourse]);
+  };
 
-  const loadGroups = useCallback(async (courseId, preferredGroupId = null) => {
+  const loadGroups = async (courseId, preferredGroupName = null) => {
     if (!courseId) {
       setGroups([]);
       setActiveGroup(null);
@@ -58,44 +58,51 @@ function App() {
     }
 
     try {
-      const groupsData = await window.api.getGroups(courseId);
-      setGroups(groupsData);
+      const groupNames = await window.api.getGroups(courseId);
+      setGroups(groupNames);
 
-      if (groupsData.length === 0) {
+      if (groupNames.length === 0) {
         setActiveGroup(null);
         return;
       }
 
-      const candidateIds = [
-        preferredGroupId,
-        activeGroup?.id
+      // Предпочтительные группы
+      const candidateNames = [
+        preferredGroupName,
+        activeGroup
       ].filter(Boolean);
 
-      let nextGroup = null;
-      for (const groupId of candidateIds) {
-        nextGroup = groupsData.find(group => group.id === groupId);
-        if (nextGroup) break;
+      let nextGroupName = null;
+      for (const groupName of candidateNames) {
+        if (groupNames.includes(groupName)) {
+          nextGroupName = groupName;
+          break;
+        }
       }
 
-      if (!nextGroup) {
-        nextGroup = groupsData[0];
+      if (!nextGroupName) {
+        nextGroupName = groupNames[0];
       }
 
-      setActiveGroup(nextGroup);
+      setActiveGroup(nextGroupName);
     } catch (error) {
       console.error('Ошибка при загрузке групп:', error);
+      setGroups([]);
+      setActiveGroup(null);
     }
-  }, [activeGroup]);
+  };
 
   useEffect(() => {
     loadCourses();
-  }, [loadCourses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeCourse) {
       loadGroups(activeCourse.id);
     }
-  }, [activeCourse, loadGroups]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCourse?.id]);
 
   useEffect(() => {
     const handleCoursesUpdated = (event) => {
@@ -105,8 +112,8 @@ function App() {
 
     const handleGroupsUpdated = (event) => {
       if (activeCourse) {
-        const preferredGroupId = event.detail?.groupId || activeGroup?.id || null;
-        loadGroups(activeCourse.id, preferredGroupId);
+        const preferredGroupName = event.detail?.groupName || activeGroup || null;
+        loadGroups(activeCourse.id, preferredGroupName);
       }
     };
 
@@ -169,7 +176,7 @@ function App() {
               {activeCourse && activeGroup && (
                 <div className="text-sm text-gray-600">
                   <div>{activeCourse.name}</div>
-                  <div className="font-medium">{activeGroup.name}</div>
+                  <div className="font-medium">{activeGroup}</div>
                 </div>
               )}
             </div>
@@ -184,7 +191,7 @@ function App() {
                 activeCourse && activeGroup ? (
                   <Dashboard 
                     course={activeCourse} 
-                    group={activeGroup.name} 
+                    group={activeGroup} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">
@@ -200,7 +207,7 @@ function App() {
                 activeCourse ? (
                   <Students 
                     course={activeCourse} 
-                    group={activeGroup?.name} 
+                    group={activeGroup} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">
@@ -218,7 +225,7 @@ function App() {
                 activeCourse && activeGroup ? (
                   <Analytics 
                     course={activeCourse} 
-                    group={activeGroup.name} 
+                    group={activeGroup} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">
@@ -234,7 +241,7 @@ function App() {
                 activeCourse && activeGroup ? (
                   <Reports 
                     course={activeCourse} 
-                    group={activeGroup.name} 
+                    group={activeGroup} 
                   />
                 ) : (
                   <div className="max-w-4xl mx-auto text-center py-12">

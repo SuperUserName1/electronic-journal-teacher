@@ -66,7 +66,7 @@ const Sidebar = ({ courses, groups, activeCourse, activeGroup, onCourseChange, o
           className={`sidebar-item ${isActive('/groups') ? 'active' : ''}`}
         >
           <UserGroupIcon className="sidebar-icon" />
-          Управление группами
+          Группы
         </Link>
         
         <div className="px-3 py-1">
@@ -127,22 +127,22 @@ const Sidebar = ({ courses, groups, activeCourse, activeGroup, onCourseChange, o
                     Нет групп для выбранного курса
                   </div>
                 ) : (
-                  groups.map((group) => (
+                  groups.map((groupName) => (
                     <div 
-                      key={group.id} 
+                      key={groupName} 
                       className={`sidebar-item cursor-pointer ${
-                        activeGroup && activeGroup.id === group.id ? 'active bg-blue-50' : ''
+                        activeGroup === groupName ? 'active bg-blue-50' : ''
                       }`}
-                      onClick={() => onGroupChange(group)}
+                      onClick={() => onGroupChange(groupName)}
                     >
                       <UserGroupIcon className="sidebar-icon text-gray-500" />
-                      <span className="truncate">{group.name}</span>
+                      <span className="truncate">{groupName}</span>
                     </div>
                   ))
                 )}
-                <Link to="/groups" className="sidebar-item text-blue-600 hover:bg-blue-50">
+                <Link to="/students" className="sidebar-item text-blue-600 hover:bg-blue-50">
                   <PlusIcon className="sidebar-icon text-blue-500" />
-                  Настроить группы
+                  Добавить студентов
                 </Link>
               </div>
             )}

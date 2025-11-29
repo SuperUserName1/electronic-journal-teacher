@@ -26,9 +26,10 @@ contextBridge.exposeInMainWorld('api', {
   
   // Группы
   getGroups: (courseId) => ipcRenderer.invoke('get-groups', courseId),
-  createGroup: (groupData) => ipcRenderer.invoke('create-group', groupData),
-  updateGroup: (groupId, groupData) => ipcRenderer.invoke('update-group', groupId, groupData),
-  deleteGroup: (groupId) => ipcRenderer.invoke('delete-group', groupId),
+  getAllGroups: () => ipcRenderer.invoke('get-all-groups'),
+  createGroup: (groupName) => ipcRenderer.invoke('create-group', groupName),
+  updateGroup: (oldGroupName, newGroupName) => ipcRenderer.invoke('update-group', oldGroupName, newGroupName),
+  deleteGroup: (groupName) => ipcRenderer.invoke('delete-group', groupName),
   
   // Курсы
   getCourses: () => ipcRenderer.invoke('get-courses'),
