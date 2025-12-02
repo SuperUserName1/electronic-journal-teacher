@@ -21,58 +21,50 @@
         "appId": "com.electronicjournal.teacher",
         "productName": "ЭЖП: Электронный Журнал Преподавателя",
         "directories": {
-            "output": "dist"
+          "output": "dist",
+          "buildResources": "assets"
         },
-        "asarUnpack": [
-            "**/*.node",
-            "node_modules/sqlite3/**/*"
+        "files": [
+          "main/**/*",
+          "renderer/dist/**/*",
+          "node_modules/**/*",
+          "assets/**/*",
+          "package.json"
         ],
-        "icon": "assets/icons/icon",
-        "artifactName": "${productName}-${version}.${ext}",
-        "nodeGypRebuild": false,
-        "buildDependenciesFromSource": false,
-        "electronDownload": {
-            "cache": ".electron"
-        },
+        "asar": true,
+        "asarUnpack": [
+          "**/node_modules/sqlite3/**/*",
+          "**/node_modules/better-sqlite3/**/*",
+          "**/node_modules/*.node"
+        ],
+        "nodeGypRebuild": true,
+        "npmRebuild": false,
         "win": {
-            "icon": "assets/icons/icon.ico",
-            "target": [
-                {
-                    "target": "nsis",
-                    "arch": [
-                        "x64"
-                    ]
-                },
-                {
-                    "target": "portable",
-                    "arch": [
-                        "x64"
-                    ]
-                }
-            ],
-            "publisherName": "Nikita"
+          "target": [
+            {
+              "target": "nsis",
+              "arch": ["x64"]
+            }
+          ],
+          "icon": "assets/icons/icon.ico",
+          "publisherName": "Nikita"
         },
         "nsis": {
-            "oneClick": false,
-            "perMachine": false,
-            "allowToChangeInstallationDirectory": true,
-            "artifactName": "${productName}-Setup-${version}.${ext}"
+          "oneClick": false,
+          "perMachine": false,
+          "allowToChangeInstallationDirectory": true,
+          "createDesktopShortcut": true,
+          "createStartMenuShortcut": true,
+          "shortcutName": "ЭЖП Преподаватель"
         },
-        "portable": {
-            "artifactName": "${productName}-Portable-${version}.${ext}"
-        },
-        "linux": {
-            "target": [
-                "AppImage"
-            ],
-            "category": "Education",
-            "icon": "assets/icons/icon.png",
-            "artifactName": "${productName}-${version}.${ext}"
-        },
-        "mac": {
-            "target": "dmg"
-        }
-    },
+        "extraResources": [
+          {
+            "from": "assets/icons",
+            "to": "icons"
+          }
+        ],
+        "publish": null
+    }, 
     "dependencies": {
         "chart.js": "^4.4.0",
         "date-fns": "^3.3.1",

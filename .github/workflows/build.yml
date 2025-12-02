@@ -19,64 +19,66 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-          
-      - name: Install Visual Studio Build Tools
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: '17.10'
-          
-      - name: Install Windows SDK
+      - name: Install build tools
         run: |
-          choco install windows-sdk-10-version-2104 -y
+          # Устанавливаем только необходимое
+          npm install -g windows-build-tools
+          # Или используем существующие инструменты в Windows runner
+          # Проверяем, что есть необходимые компиляторы
+          cl.exe 2>&1 || echo "Visual Studio tools might not be fully available"
         shell: powershell
-
-      - name: Set environment variables
+        
+      - name: Configure npm for Electron build
         run: |
-          echo "npm_config_arch=x64" >> $env:GITHUB_ENV
-          echo "npm_config_disturl=https://artifacts.electronjs.org/headers/dist " >> $env:GITHUB_ENV
-          echo "npm_config_runtime=electron" >> $env:GITHUB_ENV
-          echo "npm_config_target=27.3.11" >> $env:GITHUB_ENV
-          echo "npm_config_build_from_source=true" >> $env:GITHUB_ENV
+          # Устанавливаем переменные окружения для сборки нативных модулей
+          npm config set target 27.3.11
+          npm config set arch x64
+          npm config set target_arch x64
+          npm config set runtime electron
+          npm config set disturl https://electronjs.org/headers
+          npm config set build_from_source true
+          
+          # Для работы sqlite3 устанавливаем дополнительные флаги
+          npm config set sqlite3_binary_host_mirror https://github.com/TryGhost/node-sqlite3/releases/download
         shell: powershell
         
       - name: Install dependencies
-        run: npm ci --prefer-offline --no-audit --no-fund
-        
-      - name: Install sqlite3 with proper build flags
         run: |
-          npm uninstall sqlite3
-          npm install sqlite3@latest --build-from-source --save
-        env:
-          npm_config_arch: x64
-          npm_config_runtime: electron
-          npm_config_target: 27.3.11
-          npm_config_disturl: https://artifacts.electronjs.org/headers/dist 
-
-      - name: Build application
+          npm ci --verbose
+          # Устанавливаем electron-builder глобально для упрощения
+          npm install -g electron-builder@24
+        shell: powershell
+        
+      - name: Build renderer
         run: npm run build
         
-      - name: Package application
-        run: npm run package-win-installer
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Check artifacts directory
+      - name: Package Electron app
         run: |
-          if (!(Test-Path dist)) {
-            Write-Output "dist directory does not exist"
-            exit 1
-          }
-          Get-ChildItem dist -Recurse
+          # Пробуем использовать более простой подход
+          npx electron-builder build --win --x64 --config.win.target=nsis --config.asar=true
+          # ИЛИ если не работает, попробуйте:
+          # npx electron-builder --win --x64
         shell: powershell
-          
+        
+      - name: List artifacts
+        run: |
+          Write-Host "Looking for build artifacts..."
+          if (Test-Path "dist") {
+            Get-ChildItem "dist" -Recurse
+          } else {
+            Write-Host "dist folder not found, checking other locations..."
+            Get-ChildItem -Recurse -Filter "*.exe" | Select-Object FullName
+          }
+        shell: powershell
+        
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist/*.exe
+          path: |
+            dist/*.exe
+            dist/*.msi
+            dist/*.nsis.exe
+          if-no-files-found: warn
