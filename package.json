@@ -13,6 +13,8 @@
         "build": "webpack --mode production --config webpack.config.js",
         "package": "electron-builder",
         "package-win": "electron-builder --win --x64",
+        "package-win-installer": "electron-builder --win --x64 --config.win.target=nsis",
+        "package-win-portable": "electron-builder --win --x64 --config.win.target=portable",
         "package-all": "electron-builder --win --x64 --linux --mac"
     },
     "build": {
@@ -26,11 +28,22 @@
         ],
         "icon": "assets/icons/icon",
         "artifactName": "${productName}-${version}.${ext}",
+        "nodeGypRebuild": false,
+        "buildDependenciesFromSource": false,
+        "electronDownload": {
+            "cache": ".electron"
+        },
         "win": {
             "icon": "assets/icons/icon.ico",
             "target": [
                 {
                     "target": "nsis",
+                    "arch": [
+                        "x64"
+                    ]
+                },
+                {
+                    "target": "portable",
                     "arch": [
                         "x64"
                     ]
@@ -43,6 +56,9 @@
             "perMachine": false,
             "allowToChangeInstallationDirectory": true,
             "artifactName": "${productName}-Setup-${version}.${ext}"
+        },
+        "portable": {
+            "artifactName": "${productName}-Portable-${version}.${ext}"
         },
         "linux": {
             "target": [
@@ -71,7 +87,7 @@
         "react-dom": "^18.2.0",
         "react-router-dom": "^6.18.0",
         "recharts": "^3.4.1",
-        "sqlite3": "5.1.7",
+        "sqlite3": "^5.1.7",
         "xlsx": "^0.18.5"
     },
     "devDependencies": {
