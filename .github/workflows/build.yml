@@ -21,64 +21,51 @@ jobs:
         with:
           node-version: 20
           
-      - name: Install build tools
-        run: |
-          # Устанавливаем только необходимое
-          npm install -g windows-build-tools
-          # Или используем существующие инструменты в Windows runner
-          # Проверяем, что есть необходимые компиляторы
-          cl.exe 2>&1 || echo "Visual Studio tools might not be fully available"
-        shell: powershell
-        
-      - name: Configure npm for Electron build
-        run: |
-          # Устанавливаем переменные окружения для сборки нативных модулей
-          npm config set target 27.3.11
-          npm config set arch x64
-          npm config set target_arch x64
-          npm config set runtime electron
-          npm config set disturl https://electronjs.org/headers
-          npm config set build_from_source true
-          
-          # Для работы sqlite3 устанавливаем дополнительные флаги
-          npm config set sqlite3_binary_host_mirror https://github.com/TryGhost/node-sqlite3/releases/download
-        shell: powershell
-        
       - name: Install dependencies
-        run: |
-          npm ci --verbose
-          # Устанавливаем electron-builder глобально для упрощения
-          npm install -g electron-builder@24
-        shell: powershell
+        run: npm ci
+        shell: bash
         
       - name: Build renderer
         run: npm run build
+        shell: bash
         
-      - name: Package Electron app
-        run: |
-          # Пробуем использовать более простой подход
-          npx electron-builder build --win --x64 --config.win.target=nsis --config.asar=true
-          # ИЛИ если не работает, попробуйте:
-          # npx electron-builder --win --x64
-        shell: powershell
+      - name: Install electron-builder
+        run: npm install -g electron-builder@24
+        shell: bash
         
-      - name: List artifacts
+      - name: Configure for Windows build
         run: |
-          Write-Host "Looking for build artifacts..."
-          if (Test-Path "dist") {
-            Get-ChildItem "dist" -Recurse
-          } else {
-            Write-Host "dist folder not found, checking other locations..."
-            Get-ChildItem -Recurse -Filter "*.exe" | Select-Object FullName
-          }
-        shell: powershell
+          # Настраиваем переменные окружения для сборки
+          echo "npm_config_target=27.3.11" >> $GITHUB_ENV
+          echo "npm_config_arch=x64" >> $GITHUB_ENV
+          echo "npm_config_runtime=electron" >> $GITHUB_ENV
+          echo "npm_config_disturl=https://electronjs.org/headers" >> $GITHUB_ENV
+          echo "npm_config_build_from_source=true" >> $GITHUB_ENV
+        shell: bash
+        
+      - name: Rebuild sqlite3
+        run: |
+          npm rebuild sqlite3 --runtime=electron --target=27.3.11 --disturl=https://electronjs.org/headers --arch=x64
+        shell: bash
+        
+      - name: Build Electron application
+        run: |
+          npx electron-builder build --win --x64
+        shell: bash
+        
+      - name: Check build artifacts
+        run: |
+          echo "Listing dist directory:"
+          ls -la dist/ || echo "dist directory not found"
+          echo ""
+          echo "Looking for exe files:"
+          find . -name "*.exe" -type f 2>/dev/null || echo "No exe files found"
+        shell: bash
         
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: |
-            dist/*.exe
-            dist/*.msi
-            dist/*.nsis.exe
-          if-no-files-found: warn
+            dist/**/*.exe
+            dist/**/*.msi
