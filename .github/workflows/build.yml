@@ -1,4 +1,3 @@
-
 name: Build Windows Release
 
 on:
@@ -9,57 +8,82 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: windows-2022  # Используем новую версию Windows runner
     
-    # Устанавливаем необходимые зависимости Windows для сборки нативных модулей
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Для корректной работы с тегами
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
           
-      - name: Install Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
           
-      - name: Install Visual Studio Build Tools
-        uses: microsoft/setup-msbuild@v2
-        with:
-          vs-version: '17.10'
-          
-      - name: Add MSBuild to PATH
-        run: echo "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin" >> $GITHUB_PATH
-        
-      - name: Install Windows SDK
+      - name: Install Visual Studio components
         run: |
-          choco install windows-sdk-10-version-22h2-all-noarch -y
-          choco install vcredist-all -y
+          # Установка необходимых компонентов Visual Studio
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -property installationPath
+          $vsVersion = & $vswhere -latest -property installationVersion
           
+          # Установка компонентов через vs_installer
+          $installPath = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+          & $installPath modify `
+            --installPath "$vsPath" `
+            --add Microsoft.VisualStudio.Workload.VCTools `
+            --add Microsoft.VisualStudio.Component.Windows10SDK.19041 `
+            --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            --quiet `
+            --wait
+        shell: powershell
+        
+      - name: Verify Visual Studio installation
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          & $vswhere -all -products * -requires Microsoft.Component.MSBuild -property installationPath
+          & $vswhere -all -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        shell: powershell
+        
+      - name: Set environment variables for node-gyp
+        run: |
+          echo "PYTHON=C:\hostedtoolcache\windows\Python\3.9.13\x64\python.exe" >> $env:GITHUB_ENV
+          echo "VCTargetsPath=C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\MSBuild\Microsoft\VC\v170" >> $env:GITHUB_ENV
+        shell: powershell
+        
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund
-        
+        env:
+          npm_config_arch: x64
+          
       - name: Rebuild sqlite3 for Electron
         run: |
+          npm uninstall sqlite3
+          npm install sqlite3@latest --build-from-source --save
           npm rebuild sqlite3 --runtime=electron --target=27.3.11 --disturl=https://artifacts.electronjs.org/headers/dist/  --abi=115
         env:
           npm_config_arch: x64
+          npm_config_node_gyp: "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin"
           
       - name: Build application
         run: npm run build
         
-      - name: Package application (Installer)
-        run: npm run package-win-installer
+      - name: Package application
+        run: |
+          npm run package -- --win --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-      - name: Package application (Portable)
-        run: npm run package-win-portable
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify build artifacts
+        run: |
+          Get-ChildItem dist -Recurse
+        shell: powershell
           
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
