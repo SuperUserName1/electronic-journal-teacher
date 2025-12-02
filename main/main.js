@@ -6,6 +6,10 @@ const waitForServer = require('./wait-for-server');
 
 let mainWindow;
 
+// Гарантируем единый путь для данных приложения на всех ОС
+const appDataDir = path.join(app.getPath('appData'), 'electronic-journal-teacher');
+app.setPath('userData', appDataDir);
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
